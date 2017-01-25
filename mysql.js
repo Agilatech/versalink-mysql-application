@@ -26,7 +26,7 @@ module.exports = class Mysql {
 
 	startObservers() {
 
-		const deviceQuery = this.server.where({name:this.device.name});
+		const deviceQuery = this.server.from('*').where({name:this.device.name});
 
 		const self = this;
 
