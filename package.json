@@ -1,6 +1,6 @@
 {
   "name": "@agilatech/versalink-mysql-application",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "VersaLink Server App for inserting sensor data into MySQL DB",
   "main": "loader.js",
   "scripts": {
