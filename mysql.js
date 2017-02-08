@@ -26,21 +26,40 @@ module.exports = class Mysql {
 
 	startObservers() {
 
-		const deviceQuery = this.server.from('*').where({name:this.device.name});
+		// Hmmm, seems that the wildcard .from('*') is not a really a wildcard from 
+		// the perspective of the local server.  So if we want to find devices on a
+		// remote peer AND this local server, then we have to have two queries.
+
+		const peersDeviceQuery = this.server.from('*').where({name:this.device.name});
+		const localDeviceQuery  = this.server.where({name:this.device.name});
 
 		const self = this;
 
-		this.server.observe([deviceQuery], function(dev) {
+		// Once we have two queries, we can either set up two observers as we've done
+		// here, or maybe use Reactive-Extensions RxJS to merge the two observations
 
-			const innerDev = dev;
+		this.server.observe([localDeviceQuery], function(dev) {
+
 			self.device.values.forEach(function(value) {
 
 			    //If a monitored value changes it is inserted into the staging area
-			    innerDev.streams[value].on('data', function(message) {
+			    dev.streams[value].on('data', function(message) {
 			    	self.stage(value, message.timestamp, message.data);
 			    });
   			});
   		});
+
+  		this.server.observe([peersDeviceQuery], function(dev) {
+
+			self.device.values.forEach(function(value) {
+
+			    //If a monitored value changes it is inserted into the staging area
+			    dev.streams[value].on('data', function(message) {
+			    	self.stage(value, message.timestamp, message.data);
+			    });
+  			});
+  		});
+
 	}
 
 	stage(label, timestamp, value) {
@@ -115,6 +134,17 @@ module.exports = class Mysql {
 				self.server.error("MySQL connection error: " + err.stack);
 				self.connection = null;
 			}
+		});
+
+		this.connection.on('error', function(err) {
+			if (err.code == 'PROTOCOL_CONNECTION_LOST') {
+				self.server.warn('MySQL disconnected... reconnecting');
+			}
+			else {
+				self.server.error('MySQL disconnected on Unhandled error.  Attempting reconnect...');
+			}
+			self.connection.end();
+			self.connect(params);
 		});
 	}
 
