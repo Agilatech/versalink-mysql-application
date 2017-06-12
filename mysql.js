@@ -42,23 +42,23 @@ module.exports = class Mysql {
 
 			self.device.values.forEach(function(value) {
 
-			    //If a monitored value changes it is inserted into the staging area
-			    dev.streams[value].on('data', function(message) {
-			    	self.stage(value, message.timestamp, message.data);
-			    });
-  			});
+			  //If a monitored value changes it is inserted into the staging area
+			  dev.streams[value].on('data', function(message) {
+			    self.stage(value, message.timestamp, message.data);
+			  });
   		});
+  	});
 
-  		this.server.observe([peersDeviceQuery], function(dev) {
+  	this.server.observe([peersDeviceQuery], function(dev) {
 
 			self.device.values.forEach(function(value) {
 
-			    //If a monitored value changes it is inserted into the staging area
-			    dev.streams[value].on('data', function(message) {
-			    	self.stage(value, message.timestamp, message.data);
-			    });
-  			});
+				//If a monitored value changes it is inserted into the staging area
+				dev.streams[value].on('data', function(message) {
+			  	self.stage(value, message.timestamp, message.data);
+				});
   		});
+  	});
 
 	}
 
