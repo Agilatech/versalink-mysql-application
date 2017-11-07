@@ -12,7 +12,8 @@ module.exports = class Mysql {
 		this.staging.data = {};
 
 		// the time to wait for other parameters to report their value
-		this.waitTime = 5000;
+		this.waitTime = (typeof device['insertDelay'] != 'undefined') ? device['insertDelay'] : 5000;
+    
 		this.countdown = null;
 
 		this.connect(parameters);
@@ -93,7 +94,26 @@ module.exports = class Mysql {
 
 		const self = this;
 
-		// store to db table
+		var sql = null;
+
+		if (this.device.storeType === 'update') {
+			sql = this.sqlUpdate();
+		}
+		else {
+			sql = this.sqlInsert();
+		}
+
+		this.connection.query(sql, function(err, result) {
+			if (err) {
+				self.server.error("MySQL " + err + " -> " + sql);
+			}
+		});
+	}
+
+	sqlInsert() {
+
+		const self = this;
+
 		var sql = "INSERT INTO " + this.device.table + " (devicetime";
 
 		this.device.columns.forEach(function(col) {
@@ -112,11 +132,25 @@ module.exports = class Mysql {
 
 		sql += ");";
 
-		this.connection.query(sql, function(err, result) {
-			if (err) {
-				self.server.error("MySQL " + err + " -> " + sql);
+		return sql;
+	}
+
+	sqlUpdate() {
+
+		const self = this;
+
+		var sql = "UPDATE " + this.device.table + " SET devicetime = " + this.staging.timestamp;
+
+		this.device.columns.forEach(function(col, index) {
+			if (typeof self.staging.data[self.device.values[index]] != 'undefined') {
+				sql += ", " + col + " = " + self.staging.data[self.device.values[index]];
 			}
 		});
+
+		sql += ";";
+
+		return sql;
+
 	}
 
 	connect(params) {

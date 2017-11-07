@@ -28,10 +28,18 @@
 			"name":"RMY85000",
 			"database":"station",
 			"table":"rmy85000",
-			"insertDelay":5000,
+			"insertDelay":60000,
 			"values":["avg_speed_stream", "avg_direction_stream", "gust_speed_stream", "gust_direction_stream"],
 			"columns":["speed", "direction", "gust_speed", "gust_direction"]
-
+		},
+		{
+			"name":"RMY85000",
+			"database":"station",
+			"table":"wind",
+			"storeType":"update",
+			"insertDelay":10,
+			"values":["speed", "direction", "avg_speed", "avg_direction"],
+			"columns":["now_speed", "now_direction", "avg_speed", "avg_direction"]
 		},
 		{
 			"name":"SI1145",
