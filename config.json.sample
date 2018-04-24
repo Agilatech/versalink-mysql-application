@@ -1,73 +1,34 @@
 {
 	"devices":[
 		{
-			"name":"BMP183",
-			"database":"station",
-			"table":"bmp183",
-			"insertDelay":5000,
-			"values":["pressure_stream", "temperature_stream"],
-			"columns":["pressure", "temperature"]
-		},
-		{
-			"name":"HTU21D",
-			"database":"station",
-			"table":"htu21d",
-			"insertDelay":5000,
-			"values":["humidity_stream", "temperature_stream"],
-			"columns":["humidity", "temperature"]
-		},
-		{
-			"name":"RAIN",
-			"database":"station",
-			"table":"rain",
+			"name":"MOCK",
+			"database":"versalink",
+			"table":"mock",
 			"insertDelay":0,
-			"values":["amount"],
-			"columns":["amount"]
+			"values":["value"],
+			"columns":["value"]
 		},
 		{
-			"name":"RMY85000",
-			"database":"station",
-			"table":"rmy85000",
-			"insertDelay":60000,
-			"values":["avg_speed_stream", "avg_direction_stream", "gust_speed_stream", "gust_direction_stream"],
-			"columns":["speed", "direction", "gust_speed", "gust_direction"]
-		},
-		{
-			"name":"RMY85000",
-			"database":"station",
+			"name":"WIND",
+			"database":"wxstation",
 			"table":"wind",
-			"storeType":"update",
-			"insertDelay":10,
-			"values":["speed", "direction", "avg_speed", "avg_direction"],
-			"columns":["now_speed", "now_direction", "avg_speed", "avg_direction"]
-		},
-		{
-			"name":"SI1145",
-			"database":"station",
-			"table":"si1145",
-			"insertDelay":5000,
-			"values":["ir_stream", "visible_stream", "uv_stream"],
-			"columns":["ir", "visible", "uv"]
-		},
-		{
-			"name":"TSL2561",
-			"database":"station",
-			"table":"tsl2561",
-			"insertDelay":0,
-			"values":["lux_stream"],
-			"columns":["lux"]
+			"insertDelay":1000,
+			"values":["speed_mps", "direction_deg"],
+			"columns":["speed", "direction"]
 		}
 	],
 	"connections":[
 		{
-			"host":"agilatech.com",
-			"user":"agt1",
-			"password":"bCJXstX8y7n7v4"
+			"host":"localhost",
+			"user":"agt",
+			"password":"aC7ch6ppig6v4cqi49mx",
+			"socketPath":"/opt/local/var/run/mariadb/mysqld.sock"
 		},
 		{
-			"host":"localhost",
-			"user":"user123",
-			"password":"sEgrJpx99x38VK"
+			"host":"mysql.example.com",
+			"user":"billybob",
+			"password":"7fjH4Uh6F83JUtE2xGWq",
+
 		}
 	]
 }

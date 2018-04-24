@@ -4,8 +4,13 @@ module.exports = class Mysql {
 	
 	constructor(server, device, parameters) {
 
-		this.device = device;
 		this.server = server;
+		this.device = device;
+		this.parameters = parameters;
+		this.parameters['database'] = this.device.database;
+
+		this.connection = null;
+		this.countdown = null;
 
 		this.staging = {};
 		this.staging.stale = this.device.values.length;
@@ -13,10 +18,8 @@ module.exports = class Mysql {
 
 		// the time to wait for other parameters to report their value
 		this.waitTime = (typeof device['insertDelay'] != 'undefined') ? device['insertDelay'] : 5000;
-    
-		this.countdown = null;
 
-		this.connect(parameters);
+		this.connect();
 
 		if (this.connection) {
 			this.startObservers();
@@ -26,45 +29,56 @@ module.exports = class Mysql {
 	}
 
 	startObservers() {
-
-		// Hmmm, seems that the wildcard .from('*') is not a really a wildcard from 
-		// the perspective of the local server.  So if we want to find devices on a
-		// remote peer AND this local server, then we have to have two queries.
+		// Devices can be queried from the local server by omitting the 'from' clause.
+		// Devices from a peer server require the 'from' clause, which can be a wildcard *
+		// to select from all connected peers.  The wildcard * does NOT match the local server.
 
 		const peersDeviceQuery = this.server.from('*').where({name:this.device.name});
 		const localDeviceQuery  = this.server.where({name:this.device.name});
 
-		const self = this;
-
 		// Once we have two queries, we can either set up two observers as we've done
 		// here, or maybe use Reactive-Extensions RxJS to merge the two observations
 
-		this.server.observe([localDeviceQuery], function(dev) {
+		this.server.observe([localDeviceQuery], (dev) => {
 
-			self.device.values.forEach(function(value) {
+			this.device.values.forEach((value) => {
 
-			  //If a monitored value changes it is inserted into the staging area
-			  dev.streams[value].on('data', function(message) {
-			    self.stage(value, message.timestamp, message.data);
-			  });
+				if (dev.streams[value] == undefined) {  // or null
+					this.server.warn(`${value} not defined for ${this.device.name} on this server`);
+				}
+				else {
+			  // When data for this value is published, it is inserted into the staging area
+				  dev.streams[value].on('data', (message) => {
+				    this.stage(value, message.timestamp, message.data);
+				  });
+				}
   		});
   	});
 
-  	this.server.observe([peersDeviceQuery], function(dev) {
+		// The server.observe takes the query and executes the callback if and when the query succeeds.
+		// The parameter of the callback is the object matching the query, in this case the device
+		// named 'this.device.name' on any peer.
+  	this.server.observe([peersDeviceQuery], (dev) => {
 
-			self.device.values.forEach(function(value) {
+  		// Now we go through each value for this device object as defined in the config file, and
+  		// set up a subscriber for its data.
+			this.device.values.forEach((value) => {
 
-				//If a monitored value changes it is inserted into the staging area
-				dev.streams[value].on('data', function(message) {
-			  	self.stage(value, message.timestamp, message.data);
-				});
+				if (dev.streams[value] == undefined) {  // or null
+					this.server.warn(`${value} not defined for ${this.device.name} on peer server`);
+				}
+				else {
+					// When and how data for a particular value is published is dependent on the device itself
+					dev.streams[value].on('data', (message) => {
+				  	this.stage(value, message.timestamp, message.data);
+					});
+				}
   		});
   	});
 
 	}
 
 	stage(label, timestamp, value) {
-
 		this.staging.timestamp = timestamp;
 
 		this.staging.data[label] = value;
@@ -92,8 +106,6 @@ module.exports = class Mysql {
 		// reset the stale counter 
 		this.staging.stale = this.device.values.length;
 
-		const self = this;
-
 		var sql = null;
 
 		if (this.device.storeType === 'update') {
@@ -103,31 +115,35 @@ module.exports = class Mysql {
 			sql = this.sqlInsert();
 		}
 
-		this.connection.query(sql, function(err, result) {
-			if (err) {
-				self.server.error("MySQL " + err + " -> " + sql);
-			}
-		});
+		if (this.connection == undefined) {  // or null
+			// try to reconnect
+			this.connect();
+		}
+		else {
+			this.connection.query(sql, (err, result) => {
+				if (err) {
+					this.server.error("MySQL " + err + " -> " + sql);
+				}
+			});
+		}
 	}
 
 	sqlInsert() {
 
-		const self = this;
-
 		var sql = "INSERT INTO " + this.device.table + " (devicetime";
 
-		this.device.columns.forEach(function(col) {
+		this.device.columns.forEach((col) => {
 			sql += ", " + col;
 		});
 
 		sql += ") VALUES (" + this.staging.timestamp;
 
-		this.device.values.forEach(function(name, index) {
-			if (self.staging.data[name] === undefined) {
-				self.staging.data[name] = 'NULL';
+		this.device.values.forEach((name, index) => {
+			if (this.staging.data[name] === undefined) {
+				this.staging.data[name] = 'NULL';
 			}
 
-			sql += ", " + self.staging.data[name];
+			sql += ", " + this.staging.data[name];
 		});
 
 		sql += ");";
@@ -137,13 +153,11 @@ module.exports = class Mysql {
 
 	sqlUpdate() {
 
-		const self = this;
-
 		var sql = "UPDATE " + this.device.table + " SET devicetime = " + this.staging.timestamp;
 
-		this.device.columns.forEach(function(col, index) {
-			if (typeof self.staging.data[self.device.values[index]] != 'undefined') {
-				sql += ", " + col + " = " + self.staging.data[self.device.values[index]];
+		this.device.columns.forEach((col, index) => {
+			if (typeof this.staging.data[this.device.values[index]] != 'undefined') {
+				sql += ", " + col + " = " + this.staging.data[this.device.values[index]];
 			}
 		});
 
@@ -153,32 +167,31 @@ module.exports = class Mysql {
 
 	}
 
-	connect(params) {
-		this.connection = mysql.createConnection({
-			host : params.host,
-			user : params.user,
-			password : params.password,
-			database : this.device.database
-		});
+	connect() {
 
-		var self = this;
+		try {
+			this.connection = mysql.createConnection(this.parameters);
+		}
+		catch (e) {
+			this.server.error("MySQL connection creation error: " + e.message);
+		}
 
-		this.connection.connect(function(err) {
+		this.connection.connect((err) => {
 			if (err) {
-				self.server.error("MySQL connection error: " + err.stack);
-				self.connection = null;
+				this.server.error("MySQL connection error: " + err);
+				this.connection = null;
 			}
 		});
 
-		this.connection.on('error', function(err) {
+		this.connection.on('error', (err) => {
 			if (err.code == 'PROTOCOL_CONNECTION_LOST') {
-				self.server.warn('MySQL disconnected... reconnecting');
+				this.server.warn('MySQL disconnected... reconnecting');
 			}
 			else {
-				self.server.error('MySQL disconnected on Unhandled error.  Attempting reconnect...');
+				this.server.error('MySQL disconnected on Unhandled error.  Attempting reconnect...');
 			}
-			self.connection.end();
-			self.connect(params);
+			this.connection.end();
+			this.connect();  // could put a wait time in here be trying to connect again
 		});
 	}
 

@@ -1,21 +1,22 @@
 {
   "name": "@agilatech/versalink-mysql-application",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "VersaLink Server App for inserting sensor data into MySQL DB",
   "main": "loader.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "ssh://scott@209.200.216.6:22125/volume1/git_repos/versalink-mysql-application"
-  },
   "dependencies": {
     "mysql": "*"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Agilatech/versalink-mysql-application.git"
+  },
   "keywords": [
+    "VersaLink",
     "MySQL"
   ],
-  "author": "scotty <scott@agilatech.com> (http://agilatech.com)",
-  "license": "SEE LICENSE IN LICENSE"
+  "author": "scotty <scott@agilatech.com> (https://agilatech.com)",
+  "license": "MIT"
 }
